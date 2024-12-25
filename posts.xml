@@ -1,0 +1,16 @@
+<posts>
+    <post>
+        <title>Example: The Future of Web Development</title>
+        <content>As we move forward into 2024...</content>
+        <author>Sarah Chen</author>
+        <date>Dec 25, 2024</date>
+        <likes>243</likes>
+    </post>
+    <post>
+        <title>Example: Understanding AI Ethics</title>
+        <content>Artificial Intelligence is reshaping our world...</content>
+        <author>James Wilson</author>
+        <date>Dec 24, 2024</date>
+        <likes>189</likes>
+    </post>
+</posts>
