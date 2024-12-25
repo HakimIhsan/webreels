@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Blog Reels</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background: #000;
+            color: #333;
+        }
+
+        .create-post {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 100;
+        }
+
+        .container {
+            height: 100vh;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .reel {
+            height: 100vh;
+            position: absolute;
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            padding: 20px;
+            background: #f5f5f7;
+            transition: transform 0.5s ease;
+        }
+
+        .content {
+            flex: 1;
+            padding: 20px;
+            background: #fff;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            overflow-y: auto;
+            margin-bottom: 10px;
+        }
+
+        .blog-header {
+            margin-bottom: 20px;
+        }
+
+        .author {
+            display: flex;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .author-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            margin-right: 10px;
+            background: #ddd;
+        }
+
+        .author-info {
+            flex: 1;
+        }
+
+        .author-name {
+            font-weight: 600;
+            color: #333;
+        }
+
+        .post-date {
+            font-size: 0.9em;
+            color: #666;
+        }
+
+        .blog-title {
+            font-size: 1.8em;
+            font-weight: 700;
+            margin-bottom: 10px;
+            color: #1a1a1a;
+        }
+
+        .blog-content {
+            font-size: 1.1em;
+            line-height: 1.6;
+            color: #333;
+        }
+
+        .actions {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px;
+        }
+
+        .button {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 20px;
+            background: #0066ff;
+            color: white;
+            cursor: pointer;
+            font-weight: 500;
+        }
+
+        .nav-buttons {
+            position: fixed;
+            right: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .nav-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: rgba(0,0,0,0.2);
+            cursor: pointer;
+        }
+
+        .nav-dot.active {
+            background: #0066ff;
+            transform: scale(1.2);
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 1000;
+        }
+
+        .modal-content {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            width: 90%;
+            max-width: 600px;
+        }
+
+        .modal input, .modal textarea {
+            width: 100%;
+            padding: 10px;
+            margin: 10px 0;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+        }
+
+        .modal textarea {
+            height: 200px;
+            resize: vertical;
+        }
+        .like-button {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: #0066ff;
+            color: white;
+            padding: 8px 16px;
+            border: none;
+            border-radius: 20px;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        .like-button.liked {
+            background: #ff4081;
+        }
+
+        .like-button:active {
+            transform: scale(0.95);
+        }
+
+        #canvas {
+            display: none;
+        }
+    </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+</head>
+<body>
+    <button class="button create-post" onclick="openModal()">Create Post</button>
+    <div class="container">
+        <div class="nav-buttons"></div>
+    </div>
+
+    <div class="modal" id="createModal">
+        <div class="modal-content">
+            <h2>Create New Blog Post</h2>
+            <input type="text" id="postTitle" placeholder="Title">
+            <textarea id="postContent" placeholder="Write your blog post..."></textarea>
+            <button class="button" onclick="createPost()">Post</button>
+            <button class="button" onclick="closeModal()" style="background: #666;">Cancel</button>
+        </div>
+    </div>
+    <canvas id="canvas"></canvas>
+    <script>
+        let posts = [
+            {
+                title: "The Future of Web Development",
+                content: "As we move forward into 2024, the landscape of web development continues to evolve at an unprecedented pace. Frontend frameworks are becoming more sophisticated, while backend systems are increasingly moving towards serverless architectures...",
+                author: "Sarah Chen",
+                date: "Dec 25, 2024",
+                likes: 243
+            },
+            {
+                title: "Understanding AI Ethics",
+                content: "Artificial Intelligence is reshaping our world, but with great power comes great responsibility. Today, we'll explore the ethical considerations that developers and organizations must consider when implementing AI systems...",
+                author: "James Wilson",
+                date: "Dec 24, 2024",
+                likes: 189
+            }
+        ];
+
+        const container = document.querySelector('.container');
+        const navButtons = document.querySelector('.nav-buttons');
+        let currentIndex = 0;
+
+        function createPostElement(post, index) {
+            const reel = document.createElement('div');
+            reel.className = 'reel';
+            reel.style.transform = `translateY(${index * 100}vh)`;
+            
+            const content = document.createElement('div');
+            content.className = 'content';
+            
+            content.innerHTML = `
+                <div class="blog-header">
+                    <div class="author">
+                        <div class="author-avatar"></div>
+                        <div class="author-info">
+                            <div class="author-name">${post.author}</div>
+                            <div class="post-date">${post.date}</div>
+                        </div>
+                    </div>
+                    <h1 class="blog-title">${post.title}</h1>
+                </div>
+                <div class="blog-content">${post.content}</div>
+            `;
+            
+            const actions = document.createElement('div');
+            actions.className = 'actions';
+            
+            const likeBtn = document.createElement('button');
+            likeBtn.className = 'like-button';
+            likeBtn.innerHTML = `
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                    <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
+                </svg>
+                <span>${post.likes}</span>
+            `;
+            
+            // Like button functionality
+            let isLiked = false;
+            likeBtn.onclick = () => {
+                isLiked = !isLiked;
+                post.likes += isLiked ? 1 : -1;
+                likeBtn.classList.toggle('liked');
+                likeBtn.querySelector('span').textContent = post.likes;
+            };
+            
+            const shareBtn = document.createElement('button');
+            shareBtn.className = 'button';
+            shareBtn.textContent = 'Share';
+            
+            // Screenshot and share functionality
+            shareBtn.onclick = async () => {
+                try {
+                    const reelElement = reel.cloneNode(true);
+                    reelElement.style.transform = 'none';
+                    reelElement.style.position = 'fixed';
+                    reelElement.style.top = '0';
+                    reelElement.style.left = '0';
+                    document.body.appendChild(reelElement);
+                    
+                    const canvas = await html2canvas(reelElement);
+                    document.body.removeChild(reelElement);
+                    
+                    // Convert canvas to blob
+                    canvas.toBlob(async (blob) => {
+                        try {
+                            // Create file from blob
+                            const file = new File([blob], 'blog-post.png', { type: 'image/png' });
+                            
+                            // Share using Web Share API if available
+                            if (navigator.share) {
+                                await navigator.share({
+                                    title: post.title,
+                                    files: [file]
+                                });
+                            } else {
+                                // Fallback: download image
+                                const link = document.createElement('a');
+                                link.download = 'blog-post.png';
+                                link.href = canvas.toDataURL();
+                                link.click();
+                            }
+                        } catch (err) {
+                            alert('Could not share the image. Try downloading instead.');
+                        }
+                    }, 'image/png');
+                } catch (err) {
+                    alert('Could not create screenshot. Please try again.');
+                }
+            };
+            
+            actions.appendChild(likeBtn);
+            actions.appendChild(shareBtn);
+            
+            reel.appendChild(content);
+            reel.appendChild(actions);
+            return reel;
+        }
+
+        function renderPosts() {
+            container.innerHTML = '';
+            navButtons.innerHTML = '';
+            
+            posts.forEach((post, index) => {
+                const reel = createPostElement(post, index);
+                container.appendChild(reel);
+
+                const dot = document.createElement('div');
+                dot.className = 'nav-dot';
+                if (index === 0) dot.classList.add('active');
+                dot.onclick = () => navigateToReel(index);
+                navButtons.appendChild(dot);
+            });
+        }
+
+        function navigateToReel(index) {
+            if (index < 0 || index >= posts.length) return;
+            
+            currentIndex = index;
+            updateReels();
+            updateDots();
+        }
+
+        function updateReels() {
+            const reels = document.querySelectorAll('.reel');
+            reels.forEach((reel, index) => {
+                reel.style.transform = `translateY(${(index - currentIndex) * 100}vh)`;
+            });
+        }
+
+        function updateDots() {
+            const dots = document.querySelectorAll('.nav-dot');
+            dots.forEach((dot, index) => {
+                dot.classList.toggle('active', index === currentIndex);
+            });
+        }
+
+        function openModal() {
+            document.getElementById('createModal').style.display = 'block';
+        }
+
+        function closeModal() {
+            document.getElementById('createModal').style.display = 'none';
+        }
+
+        function createPost() {
+            const title = document.getElementById('postTitle').value;
+            const content = document.getElementById('postContent').value;
+            
+            if (title && content) {
+                posts.unshift({
+                    title,
+                    content,
+                    author: "You",
+                    date: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+                    likes: 0
+                });
+                
+                renderPosts();
+                closeModal();
+                document.getElementById('postTitle').value = '';
+                document.getElementById('postContent').value = '';
+            }
+        }
+
+        // Touch handling
+        let touchStart = null;
+        container.addEventListener('touchstart', (e) => {
+            touchStart = e.touches[0].clientY;
+        });
+
+        container.addEventListener('touchend', (e) => {
+            if (touchStart === null) return;
+            const touchEnd = e.changedTouches[0].clientY;
+            const diff = touchStart - touchEnd;
+            
+            if (Math.abs(diff) > 50) {
+                const direction = diff > 0 ? 1 : -1;
+                navigateToReel(currentIndex + direction);
+            }
+            touchStart = null;
+        });
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowUp') navigateToReel(currentIndex - 1);
+            if (e.key === 'ArrowDown') navigateToReel(currentIndex + 1);
+        });
+
+        renderPosts();
+    </script>
+</body>
+</html>
